@@ -3,8 +3,16 @@ Implementation of Rings of Bytes Code generator in SVG, embedded in an HTML page
 
 The RoBCodes are computer generated art. There is no known decoder. There is no key to orient the image for decoding, though it may be possible to deduce the bytes from the parity bits. Our original house design was a RoBCode, but for practical reasons, it got culled back to an octagon (not that an octagon is very practical :) (see: https://www.google.co.nz/maps/@-36.9906225,174.4870949,197m/data=!3m1!1e3). 
 
-Want to play: https://www.burrowes.org/svg_arc.html 
-or https://www.burrowes.org/rob_code.html
+Open `index.html` to use the current generator. `svg_arc.html` is kept as the
+historical byte-oriented implementation.
+
+## Project structure
+
+- `index.html` contains the page markup.
+- `style.css` contains the presentation rules.
+- `lib/rob-code.js` contains the object-oriented SVG renderer and encoding logic.
+- `app.js` connects the form controls to the renderer.
+- `svg_arc.html` and `Old/` retain the historical implementations.
 
 ##History
 Reimplements the earlier Python code, that produced a postscript file as output (ca the summer of 2013/14), and based on the target_library.ps and cardTemplate.ps from Diego Lopez de Iping TripCode generator (Diego's code was in turn, based on Jeremy Henty's code). 
@@ -29,8 +37,8 @@ Bytes are drawn in concentric rings,  either increasing each ring linearly, or e
   To find the ring r, from a byte's index i: Math.floor( Math.log( (1 - (i-1)/base*(1-base) )) / Math.log(base) ) + 1
 ```
 ###Sectors, instead of bytes
-The rob_code.html version replaces the byte calculations, with sector calculations, then allows multiple bytes in one sector. When the
-bytes per sector = 1, then the svg_arg.html and the rob_code.html versions give the same result.
+The current `index.html` version replaces the byte calculations with sector calculations, then allows multiple bytes in one sector. When the
+bytes per sector = 1, then the `svg_arc.html` and `index.html` versions give the same result.
 
 ##Reducing White Space
 XOR and other encodings have been used to improved to visual appearance, by reducing large areas of white space, especially when there are partially filled rings. This further complicates decoding, unless the XOR byte(s), or other encoding is known. 
