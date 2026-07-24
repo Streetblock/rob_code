@@ -25,6 +25,10 @@ separate `RoBCode2SvgRenderer` class in
 [`lib/rob-code-v2-svg.js`](lib/rob-code-v2-svg.js). The studio in `index.html`
 uses RoBCode 2 by default, reports the encoded symbol size, and exports the
 result as SVG. A mode switch retains access to every Legacy generator option.
+The independent `RoBCode2Decoder` in
+[`lib/rob-code-v2-decoder.js`](lib/rob-code-v2-decoder.js) validates and
+recovers already-oriented data cells, including Reed–Solomon correction. SVG
+and camera sampling are intentionally separate layers.
 
 ##History
 Reimplements the earlier Python code, that produced a postscript file as output (ca the summer of 2013/14), and based on the target_library.ps and cardTemplate.ps from Diego Lopez de Iping TripCode generator (Diego's code was in turn, based on Jeremy Henty's code). 
