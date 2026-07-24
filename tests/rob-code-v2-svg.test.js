@@ -35,6 +35,9 @@ test("renders the complete normative structure and quiet zone", () => {
   const symbol = renderer.renderBytes([], { moduleSize: 10 });
 
   assert.equal(svg.attributes.viewBox, "0 0 197 197");
+  assert.equal(svg.attributes.xmlns, "http://www.w3.org/2000/svg");
+  assert.equal(svg.attributes.width, "197");
+  assert.equal(svg.attributes.height, "197");
   assert.equal(svg.attributes["data-format"], "RoBCode-2");
   assert.equal(svg.attributes["data-outer-ring"], "7");
   assert.equal(byRole(svg, "quiet-zone").length, 1);

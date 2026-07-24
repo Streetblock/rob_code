@@ -3,125 +3,192 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RoBCode (SVG)</title>
+  <meta name="description" content="Create decodable RoBCode 2 symbols and explore the original Rings of Bytes artwork.">
+  <title>RoBCode Studio</title>
   <link rel="stylesheet" href="style.css">
   <script src="lib/rob-code.js" defer></script>
+  <script src="lib/rob-code-v2.js" defer></script>
+  <script src="lib/rob-code-v2-svg.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
   <header class="page-header">
-    <div>
-      <p class="eyebrow">Rings of Bytes</p>
-      <h1>Playing with RoBCodes</h1>
+    <a class="brand" href="index.html" aria-label="RoBCode Studio home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>
+        <span class="eyebrow">Rings of Bytes</span>
+        <strong>RoBCode Studio</strong>
+      </span>
+    </a>
+    <div class="header-meta">
+      <span class="status-chip"><span aria-hidden="true"></span> RoBCode 2 · decodable</span>
+      <a href="https://github.com/Streetblock/svg_rob_code">View source</a>
     </div>
-    <a href="https://github.com/Streetblock/svg_rob_code">Streetblock/svg_rob_code</a>
   </header>
 
   <main class="workspace">
     <form id="the_form" class="controls">
-      <section class="panel text-panel">
-        <h2>Content</h2>
-        <label for="the_text">Text encoded into the rings</label>
-        <textarea id="the_text" name="the_text" rows="16">PUCK
-  If we shadows have offended,
-  Think but this, and all is mended,
-  That you have but slumber'd here
-  While these visions did appear.
-  And this weak and idle theme,
-  No more yielding but a dream,
-  Gentles, do not reprehend:
-  if you pardon, we will mend:
-  And, as I am an honest Puck,
-  If we have unearned luck
-  Now to 'scape the serpent's tongue,
-  We will make amends ere long;
-  Else the Puck a liar call;
-  So, good night unto you all.
-  Give me your hands, if we be friends,
-  And Robin shall restore amends.</textarea>
-      </section>
+      <section class="intro-panel" aria-labelledby="studio-title">
+        <p class="section-number">01 / Choose a format</p>
+        <h1 id="studio-title">Turn data into rings.</h1>
+        <p>Use the recoverable RoBCode 2 format or explore the original generative artwork.</p>
 
-      <section class="panel">
-        <h2>Ring layout</h2>
-        <div class="field-grid">
-          <label class="check"><input type="checkbox" name="exponential"> Exponential</label>
-          <label>Step size / base
-            <select name="step_size">
-              <option value="0">0</option><option value="1">1</option>
-              <option value="2" selected>2</option><option value="3">3</option>
-              <option value="4">4</option><option value="5">5</option>
-              <option value="6">6</option><option value="7">7</option><option value="8">8</option>
-            </select>
+        <fieldset class="mode-switch">
+          <legend class="sr-only">RoBCode format</legend>
+          <label>
+            <input type="radio" name="mode" value="v2" checked>
+            <span><strong>RoBCode 2</strong><small>Decodable · error corrected</small></span>
           </label>
-          <label>Start ring <input type="number" name="start_ring" value="1"></label>
-          <label>Ring width <input type="number" name="ring_width" value="20"></label>
-          <label>Bytes per sector <input type="number" name="bytes_per_sector" min="1" value="1"></label>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Encoding</h2>
-        <div class="field-grid">
-          <label>XOR value <input type="text" name="xor_text" value="0xAA"></label>
-          <label class="check"><input type="checkbox" name="xor" checked> Apply XOR</label>
-        </div>
-        <fieldset>
-          <legend>Bit order</legend>
-          <label><input type="radio" name="bit_order" value="lsb"> LSB</label>
-          <label><input type="radio" name="bit_order" value="msb" checked> MSB</label>
-        </fieldset>
-        <fieldset>
-          <legend>Parity</legend>
-          <label><input type="radio" name="parity" value="even" checked> Even</label>
-          <label><input type="radio" name="parity" value="odd"> Odd</label>
-          <label><input type="radio" name="parity" value="none"> None</label>
-          <label><input type="radio" name="parity" value="mark"> Mark</label>
-          <label><input type="radio" name="parity" value="space"> Space</label>
+          <label>
+            <input type="radio" name="mode" value="legacy">
+            <span><strong>Legacy</strong><small>Original experimental format</small></span>
+          </label>
         </fieldset>
       </section>
 
-      <section class="panel">
-        <h2>Center</h2>
-        <div class="radio-grid">
-          <label><input type="radio" name="center" value="no_center" checked> No center</label>
-          <label><input type="radio" name="center" value="center_circle"> Solid</label>
-          <label><input type="radio" name="center" value="ring"> Ring</label>
-          <label><input type="radio" name="center" value="double_circle"> Circle with ring</label>
-          <label><input type="radio" name="center" value="center_byte"> Center byte</label>
+      <section class="panel text-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-number">02 / Payload</p>
+            <h2>Content</h2>
+          </div>
+          <output id="input_count" for="the_text">0 bytes</output>
         </div>
-        <div class="field-grid">
-          <label>Center byte <input type="text" name="center_byte_text" value="0xAA"></label>
-          <label>Center X <input type="number" name="center_x" value="250"></label>
-          <label>Center Y <input type="number" name="center_y" value="250"></label>
+        <label class="sr-only" for="the_text">Text encoded into the rings</label>
+        <textarea id="the_text" name="the_text" rows="7" spellcheck="false">RoBCode 2</textarea>
+        <p class="field-note" data-mode-copy="v2">Text is stored as UTF-8 and protected by CRC and Reed–Solomon correction.</p>
+        <p class="field-note" data-mode-copy="legacy" hidden>Legacy mode keeps the original low-byte character conversion.</p>
+      </section>
+
+      <div data-mode-section="v2">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-number">03 / Appearance</p>
+              <h2>RoBCode 2 symbol</h2>
+            </div>
+          </div>
+          <div class="field-grid">
+            <label>Module size
+              <input type="number" name="module_size" min="4" max="48" step="1" value="18">
+            </label>
+            <label>Ink
+              <input type="color" name="dark_color" value="#111713">
+            </label>
+            <label>Paper
+              <input type="color" name="light_color" value="#fffef8">
+            </label>
+          </div>
+          <label class="switch-row">
+            <span><strong>Heritage colors</strong><small>Color set bits by their byte position.</small></span>
+            <input type="checkbox" name="v2_heritage">
+          </label>
+        </section>
+      </div>
+
+      <div data-mode-section="legacy" hidden>
+        <section class="panel">
+          <p class="section-number">03 / Legacy layout</p>
+          <h2>Ring layout</h2>
+          <div class="field-grid">
+            <label class="switch-row compact"><span>Exponential</span><input type="checkbox" name="exponential"></label>
+            <label>Step size / base
+              <select name="step_size">
+                <option value="0">0</option><option value="1">1</option>
+                <option value="2" selected>2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+              </select>
+            </label>
+            <label>Start ring <input type="number" name="start_ring" value="1"></label>
+            <label>Ring width <input type="number" name="ring_width" value="20"></label>
+            <label>Bytes per sector <input type="number" name="bytes_per_sector" min="1" value="1"></label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Encoding</h2>
+          <div class="field-grid">
+            <label>XOR value <input type="text" name="xor_text" value="0xAA"></label>
+            <label class="switch-row compact"><span>Apply XOR</span><input type="checkbox" name="xor" checked></label>
+          </div>
+          <fieldset class="inline-options">
+            <legend>Bit order</legend>
+            <label><input type="radio" name="bit_order" value="lsb"> LSB</label>
+            <label><input type="radio" name="bit_order" value="msb" checked> MSB</label>
+          </fieldset>
+          <fieldset class="inline-options">
+            <legend>Parity</legend>
+            <label><input type="radio" name="parity" value="even" checked> Even</label>
+            <label><input type="radio" name="parity" value="odd"> Odd</label>
+            <label><input type="radio" name="parity" value="none"> None</label>
+            <label><input type="radio" name="parity" value="mark"> Mark</label>
+            <label><input type="radio" name="parity" value="space"> Space</label>
+          </fieldset>
+        </section>
+
+        <section class="panel">
+          <h2>Center &amp; display</h2>
+          <div class="radio-grid">
+            <label><input type="radio" name="center" value="no_center" checked> No center</label>
+            <label><input type="radio" name="center" value="center_circle"> Solid</label>
+            <label><input type="radio" name="center" value="ring"> Ring</label>
+            <label><input type="radio" name="center" value="double_circle"> Circle + ring</label>
+            <label><input type="radio" name="center" value="center_byte"> Center byte</label>
+          </div>
+          <div class="field-grid">
+            <label>Center byte <input type="text" name="center_byte_text" value="0xAA"></label>
+            <label>Center X <input type="number" name="center_x" value="250"></label>
+            <label>Center Y <input type="number" name="center_y" value="250"></label>
+          </div>
+          <div class="check-grid">
+            <label><input type="checkbox" name="counter_clockwise"> Counter-clockwise</label>
+            <label><input type="checkbox" name="bounding_circle" checked> Bounding circle</label>
+            <label><input type="checkbox" name="colour" checked> Color</label>
+            <label><input type="checkbox" name="unroll"> Unroll</label>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel palette-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-number">04 / Palette</p>
+            <h2>Byte colors</h2>
+          </div>
+          <button type="button" class="text-button" data-action="reverse-colours">Reverse</button>
+        </div>
+        <div class="colour-row" aria-label="Bit colors">
+          <input type="color" data-bit-colour value="#e94b35" aria-label="Bit 1 color">
+          <input type="color" data-bit-colour value="#f6a21a" aria-label="Bit 2 color">
+          <input type="color" data-bit-colour value="#e8d62c" aria-label="Bit 3 color">
+          <input type="color" data-bit-colour value="#45a85a" aria-label="Bit 4 color">
+          <input type="color" data-bit-colour value="#2bb7a9" aria-label="Bit 5 color">
+          <input type="color" data-bit-colour value="#347cc4" aria-label="Bit 6 color">
+          <input type="color" data-bit-colour value="#7356b7" aria-label="Bit 7 color">
+          <input type="color" data-bit-colour value="#d24b8f" aria-label="Bit 8 color">
+          <input type="color" data-bit-colour value="#111713" aria-label="Parity color">
         </div>
       </section>
 
-      <section class="panel">
-        <h2>Display</h2>
-        <div class="check-grid">
-          <label><input type="checkbox" name="counter_clockwise"> Counter-clockwise</label>
-          <label><input type="checkbox" name="bounding_circle" checked> Bounding circle</label>
-          <label><input type="checkbox" name="colour" checked> Colour</label>
-          <label><input type="checkbox" name="unroll"> Unroll</label>
-        </div>
-        <div class="colour-row" aria-label="Bit colours">
-          <input type="color" data-bit-colour value="#ff0000" aria-label="Bit 1 colour">
-          <input type="color" data-bit-colour value="#ffb300" aria-label="Bit 2 colour">
-          <input type="color" data-bit-colour value="#ffff00" aria-label="Bit 3 colour">
-          <input type="color" data-bit-colour value="#00ff00" aria-label="Bit 4 colour">
-          <input type="color" data-bit-colour value="#00ffff" aria-label="Bit 5 colour">
-          <input type="color" data-bit-colour value="#0000ff" aria-label="Bit 6 colour">
-          <input type="color" data-bit-colour value="#7700d8" aria-label="Bit 7 colour">
-          <input type="color" data-bit-colour value="#ff00ff" aria-label="Bit 8 colour">
-          <input type="color" data-bit-colour value="#000000" aria-label="Parity colour">
-          <button type="button" class="secondary" data-action="reverse-colours">Reverse</button>
-        </div>
-        <button type="submit">Draw RoBCode</button>
-      </section>
+      <div class="actions">
+        <button type="submit" class="primary-button">Draw RoBCode</button>
+        <button type="button" class="secondary-button" data-action="download">Download SVG</button>
+      </div>
     </form>
 
-    <section class="preview" aria-label="RoBCode preview">
-      <svg id="thesvg" width="100%" height="100%" aria-label="Generated RoBCode"></svg>
+    <section class="preview-shell" aria-label="RoBCode preview">
+      <div class="preview-heading">
+        <div>
+          <p class="section-number">Live output</p>
+          <h2 id="preview_title">RoBCode 2</h2>
+        </div>
+        <output id="symbol_stats" class="symbol-stats" aria-live="polite">Preparing symbol…</output>
+      </div>
+      <div class="preview" id="preview">
+        <svg id="thesvg" width="100%" height="100%" aria-label="Generated RoBCode"></svg>
+      </div>
+      <p class="preview-note" id="preview_note">Finder, orientation, length, checksums and error correction are embedded in the symbol.</p>
     </section>
   </main>
 </body>

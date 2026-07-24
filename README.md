@@ -22,8 +22,9 @@ The proposed decodable barcode profile is specified independently in
 implemented as the independent `RoBCode2Encoder` class in
 [`lib/rob-code-v2.js`](lib/rob-code-v2.js). The normative SVG renderer is the
 separate `RoBCode2SvgRenderer` class in
-[`lib/rob-code-v2-svg.js`](lib/rob-code-v2-svg.js). The current user interface
-remains the Legacy generator until the RoBCode 2 controls are added.
+[`lib/rob-code-v2-svg.js`](lib/rob-code-v2-svg.js). The studio in `index.html`
+uses RoBCode 2 by default, reports the encoded symbol size, and exports the
+result as SVG. A mode switch retains access to every Legacy generator option.
 
 ##History
 Reimplements the earlier Python code, that produced a postscript file as output (ca the summer of 2013/14), and based on the target_library.ps and cardTemplate.ps from Diego Lopez de Iping TripCode generator (Diego's code was in turn, based on Jeremy Henty's code). 
