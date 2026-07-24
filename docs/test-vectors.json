@@ -1,0 +1,57 @@
+{
+  "format": "RoBCode 2",
+  "draft": 1,
+  "syncBits": "110111111010100000001111001100110010",
+  "reedSolomon": {
+    "primitivePolynomial": "0x11D",
+    "firstConsecutiveRoot": 0,
+    "paritySymbols": 32,
+    "generatorHex": "01744034ae367e10c2a221219db0c5e10c3b37fde4942fb3b9188afd148e37ac58"
+  },
+  "vectors": [
+    {
+      "name": "empty binary payload",
+      "flags": 0,
+      "payloadHex": "",
+      "payloadCrc32": "00000000",
+      "headerHex": "524f423200010000000000000000461f",
+      "headerCodewordHex": "524f423200010000000000000000461fa11493a8f623e0aea01dc54844cf14db77ff88e08177c7240b8b986ffef29943",
+      "payloadCodewordsHex": [],
+      "codeStreamLength": 48,
+      "outerDataRing": 7,
+      "paddingBytes": 6
+    },
+    {
+      "name": "UTF-8 text RoBCode",
+      "text": "RoBCode",
+      "flags": 1,
+      "payloadHex": "526f42436f6465",
+      "payloadCrc32": "04d4d1fc",
+      "headerHex": "524f423201010000000704d4d1fc35ae",
+      "headerCodewordHex": "524f423201010000000704d4d1fc35aea14cc81373176ac4b4f51fce5d60b54675060e636851b706ca18bd3311e051c4",
+      "payloadCodewordsHex": [
+        "526f42436f64657e0f68002df71d7d807e9771f6465184453362a35b6088634be35fe7af51d9dc"
+      ],
+      "codeStreamLength": 87,
+      "outerDataRing": 9,
+      "paddingBytes": 1,
+      "firstVisibleByte": "f8",
+      "firstVisibleCells": "111110001"
+    },
+    {
+      "name": "UTF-8 text with non-ASCII characters",
+      "text": "Grüße 🌍",
+      "flags": 1,
+      "payloadHex": "4772c3bcc39f6520f09f8c8d",
+      "payloadCrc32": "a4ffc355",
+      "headerHex": "524f423201010000000ca4ffc35504c2",
+      "headerCodewordHex": "524f423201010000000ca4ffc35504c271be83807b8c6a8c8796a543d27c1342ad4793ca01cf89358dfe2c6ee1b6aab2",
+      "payloadCodewordsHex": [
+        "4772c3bcc39f6520f09f8c8d3a2ce07b77d66c3114a8ba0c91bb9cbc0a5bff6e2e48ecf5942dd7913fa28312"
+      ],
+      "codeStreamLength": 92,
+      "outerDataRing": 10,
+      "paddingBytes": 16
+    }
+  ]
+}

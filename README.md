@@ -14,6 +14,14 @@ historical byte-oriented implementation.
 - `app.js` connects the form controls to the renderer.
 - `svg_arc.html` and `Old/` retain the historical implementations.
 
+## RoBCode 2
+
+The proposed decodable barcode profile is specified independently in
+[`docs/FORMAT.md`](docs/FORMAT.md). Machine-readable golden vectors live in
+[`docs/test-vectors.json`](docs/test-vectors.json). The current application is
+still the Legacy generator; RoBCode 2 implementation starts only after the
+format draft is accepted.
+
 ##History
 Reimplements the earlier Python code, that produced a postscript file as output (ca the summer of 2013/14), and based on the target_library.ps and cardTemplate.ps from Diego Lopez de Iping TripCode generator (Diego's code was in turn, based on Jeremy Henty's code). 
 
