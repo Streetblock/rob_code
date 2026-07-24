@@ -29,6 +29,9 @@ The independent `RoBCode2Decoder` in
 [`lib/rob-code-v2-decoder.js`](lib/rob-code-v2-decoder.js) validates and
 recovers already-oriented data cells, including Reed–Solomon correction. SVG
 and camera sampling are intentionally separate layers.
+Generated SVG files can be validated and decoded from either source text or an
+SVG DOM element with `RoBCode2SvgImporter` in
+[`lib/rob-code-v2-svg-importer.js`](lib/rob-code-v2-svg-importer.js).
 
 ##History
 Reimplements the earlier Python code, that produced a postscript file as output (ca the summer of 2013/14), and based on the target_library.ps and cardTemplate.ps from Diego Lopez de Iping TripCode generator (Diego's code was in turn, based on Jeremy Henty's code). 
