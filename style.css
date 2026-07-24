@@ -364,7 +364,7 @@ button {
   font-size: .72rem;
 }
 
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; }
+.actions { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: .65rem; }
 
 .primary-button {
   border: 1px solid var(--ink);

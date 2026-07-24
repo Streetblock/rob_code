@@ -9,6 +9,7 @@
   <script src="lib/rob-code.js" defer></script>
   <script src="lib/rob-code-v2.js" defer></script>
   <script src="lib/rob-code-v2-decoder.js" defer></script>
+  <script src="lib/rob-code-v2-raster-sampler.js" defer></script>
   <script src="lib/rob-code-v2-svg.js" defer></script>
   <script src="lib/rob-code-v2-svg-importer.js" defer></script>
   <script src="app.js" defer></script>
@@ -175,22 +176,23 @@
 
       <div class="actions">
         <button type="submit" class="primary-button">Draw RoBCode</button>
-        <button type="button" class="secondary-button" data-action="download">Download SVG</button>
+        <button type="button" class="secondary-button" data-action="download-svg">Download SVG</button>
+        <button type="button" class="secondary-button" data-action="download-png">Download PNG</button>
       </div>
 
       <section class="panel decode-panel" data-mode-section="v2">
         <div class="panel-heading">
           <div>
             <p class="section-number">05 / Verify</p>
-            <h2>Decode an SVG</h2>
+            <h2>Decode a file</h2>
           </div>
           <span class="decode-badge" id="decode_badge">Ready</span>
         </div>
-        <p class="field-note">Import a RoBCode 2 SVG created by this studio. The file is validated locally and never uploaded.</p>
-        <label class="upload-zone" for="svg_upload">
-          <input id="svg_upload" name="svg_upload" type="file" accept="image/svg+xml,.svg">
+        <p class="field-note">Import a RoBCode 2 SVG or lossless PNG. The file is validated locally and never uploaded.</p>
+        <label class="upload-zone" for="code_upload">
+          <input id="code_upload" name="code_upload" type="file" accept="image/svg+xml,image/png,.svg,.png">
           <span class="upload-icon" aria-hidden="true">↥</span>
-          <span><strong>Choose an SVG file</strong><small>RoBCode 2 · maximum 64 MiB</small></span>
+          <span><strong>Choose an SVG or PNG</strong><small>RoBCode 2 · maximum 64 MiB</small></span>
         </label>
         <output id="decode_status" class="decode-status" aria-live="polite">No file selected.</output>
 

@@ -13,6 +13,7 @@ test("loads legacy, encoder, renderer, and app scripts in dependency order", () 
     "lib/rob-code.js",
     "lib/rob-code-v2.js",
     "lib/rob-code-v2-decoder.js",
+    "lib/rob-code-v2-raster-sampler.js",
     "lib/rob-code-v2-svg.js",
     "lib/rob-code-v2-svg-importer.js",
     "app.js"
@@ -28,8 +29,9 @@ test("exposes both generator modes and the SVG download control", () => {
   assert.match(html, /name="mode" value="legacy"/);
   assert.match(html, /data-mode-section="v2"/);
   assert.match(html, /data-mode-section="legacy" hidden/);
-  assert.match(html, /data-action="download"/);
-  assert.match(html, /name="svg_upload"[^>]*accept="image\/svg\+xml,\.svg"/);
+  assert.match(html, /data-action="download-svg"/);
+  assert.match(html, /data-action="download-png"/);
+  assert.match(html, /name="code_upload"[^>]*accept="image\/svg\+xml,image\/png,\.svg,\.png"/);
   assert.match(html, /data-action="use-decoded"/);
 });
 
@@ -38,7 +40,8 @@ test("keeps the controller object-oriented and importable without a browser", ()
   assert.equal(typeof RoBCodeApp.prototype.drawVersion2, "function");
   assert.equal(typeof RoBCodeApp.prototype.drawLegacy, "function");
   assert.equal(typeof RoBCodeApp.prototype.downloadSvg, "function");
-  assert.equal(typeof RoBCodeApp.prototype.decodeSvgFile, "function");
+  assert.equal(typeof RoBCodeApp.prototype.downloadPng, "function");
+  assert.equal(typeof RoBCodeApp.prototype.decodeFile, "function");
   assert.equal(typeof RoBCodeApp.prototype.showDecodedResult, "function");
 });
 
@@ -73,7 +76,7 @@ test("reads an SVG file and forwards only validated importer output", async () =
   app.svgImporter = { importString(source) { assert.equal(source, "<svg/>"); return expected; } };
   app.showDecodedResult = (decoded, name) => { shown = { decoded, name }; };
 
-  await app.decodeSvgFile({
+  await app.decodeFile({
     name: "valid.svg",
     type: "image/svg+xml",
     size: 6,
@@ -81,4 +84,71 @@ test("reads an SVG file and forwards only validated importer output", async () =
   });
 
   assert.deepEqual(shown, { decoded: expected, name: "valid.svg" });
+});
+
+test("routes PNG files through canvas image data and the raster sampler", async () => {
+  const app = Object.create(RoBCodeApp.prototype);
+  const imageData = { width: 100, height: 100, data: new Uint8ClampedArray(40000) };
+  const expected = { source: "raster", text: "png", payload: Uint8Array.of(), parityFailures: [] };
+  let shown = null;
+  app.decodeResult = { hidden: false };
+  app.useDecodedButton = { hidden: false };
+  app.decodePanel = { dataset: {} };
+  app.decodeBadge = { textContent: "" };
+  app.decodeStatus = { textContent: "" };
+  app.imageDataFromPng = async () => imageData;
+  app.rasterSampler = {
+    decodeImageData(actual) { assert.equal(actual, imageData); return expected; }
+  };
+  app.showDecodedResult = (decoded, name) => { shown = { decoded, name }; };
+
+  await app.decodeFile({ name: "valid.png", type: "image/png", size: 100 });
+  assert.deepEqual(shown, { decoded: expected, name: "valid.png" });
+});
+
+test("recognizes only SVG and PNG file types", () => {
+  const app = Object.create(RoBCodeApp.prototype);
+  assert.equal(app.detectFileKind({ name: "code.svg", type: "" }), "svg");
+  assert.equal(app.detectFileKind({ name: "code.bin", type: "image/png" }), "png");
+  assert.throws(() => app.detectFileKind({ name: "photo.jpg", type: "image/jpeg" }), /SVG or PNG/);
+});
+
+test("upscales PNG export to at least eight pixels per module", async () => {
+  const app = Object.create(RoBCodeApp.prototype);
+  const cloneAttributes = { viewBox: "0 0 200 200" };
+  const clone = {
+    setAttribute(name, value) { cloneAttributes[name] = String(value); },
+    getAttribute(name) { return cloneAttributes[name] || null; }
+  };
+  const context = {
+    fillStyle: "",
+    fillRect() {},
+    drawImage() {}
+  };
+  const canvas = { width: 0, height: 0, getContext() { return context; } };
+  const expectedBlob = { type: "image/png" };
+  app.svg = {
+    cloneNode() { return clone; },
+    getAttribute(name) { return name === "width" ? "200" : null; }
+  };
+  app.form = { elements: { mode: { value: "v2" }, module_size: { value: "4" } } };
+  app.document = { createElement(name) { assert.equal(name, "canvas"); return canvas; } };
+  app.loadImageBlob = async () => ({ width: 400, height: 400 });
+  app.canvasToBlob = async (actualCanvas, type) => {
+    assert.equal(actualCanvas, canvas);
+    assert.equal(type, "image/png");
+    return expectedBlob;
+  };
+
+  const PreviousXmlSerializer = global.XMLSerializer;
+  global.XMLSerializer = class { serializeToString() { return "<svg/>"; } };
+  try {
+    assert.equal(await app.renderPngBlob(), expectedBlob);
+  } finally {
+    global.XMLSerializer = PreviousXmlSerializer;
+  }
+  assert.equal(canvas.width, 400);
+  assert.equal(canvas.height, 400);
+  assert.equal(cloneAttributes.width, "400");
+  assert.equal(cloneAttributes.height, "400");
 });

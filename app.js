@@ -19,8 +19,9 @@
       this.previewNote = documentRoot.getElementById("preview_note");
       this.symbolStats = documentRoot.getElementById("symbol_stats");
       this.inputCount = documentRoot.getElementById("input_count");
-      this.downloadButton = this.form.querySelector("[data-action='download']");
-      this.svgUpload = documentRoot.getElementById("svg_upload");
+      this.svgDownloadButton = this.form.querySelector("[data-action='download-svg']");
+      this.pngDownloadButton = this.form.querySelector("[data-action='download-png']");
+      this.codeUpload = documentRoot.getElementById("code_upload");
       this.decodePanel = documentRoot.querySelector(".decode-panel");
       this.decodeBadge = documentRoot.getElementById("decode_badge");
       this.decodeStatus = documentRoot.getElementById("decode_status");
@@ -33,6 +34,7 @@
       this.legacyRenderer = new RoBCodeRenderer(this.svg);
       this.v2Renderer = new RoBCode2SvgRenderer(this.svg);
       this.svgImporter = new RoBCode2SvgImporter();
+      this.rasterSampler = new RoBCode2RasterSampler();
       this.lastDecoded = null;
       this.drawTimer = null;
       this.bindEvents();
@@ -48,7 +50,7 @@
       });
       this.form.addEventListener("change", event => {
         if (!event.target.matches("input, select, textarea")) return;
-        if (event.target === this.svgUpload) return;
+        if (event.target === this.codeUpload) return;
         if (event.target.name === "mode") this.syncMode();
         this.draw();
       });
@@ -58,10 +60,11 @@
         this.colourInputs.slice(0, 8).forEach((input, index) => { input.value = values[index]; });
         this.draw();
       });
-      this.downloadButton.addEventListener("click", () => this.downloadSvg());
-      this.svgUpload.addEventListener("change", () => {
-        const file = this.svgUpload.files && this.svgUpload.files[0];
-        if (file) this.decodeSvgFile(file);
+      this.svgDownloadButton.addEventListener("click", () => this.downloadSvg());
+      this.pngDownloadButton.addEventListener("click", () => this.downloadPng());
+      this.codeUpload.addEventListener("change", () => {
+        const file = this.codeUpload.files && this.codeUpload.files[0];
+        if (file) this.decodeFile(file);
       });
       this.useDecodedButton.addEventListener("click", () => this.useDecodedText());
     }
@@ -103,11 +106,13 @@
         if (this.mode === "v2") this.drawVersion2(text);
         else this.drawLegacy(text);
         this.previewShell.dataset.state = "ready";
-        this.downloadButton.disabled = false;
+        this.svgDownloadButton.disabled = false;
+        this.pngDownloadButton.disabled = false;
       } catch (error) {
         this.previewShell.dataset.state = "error";
         this.symbolStats.textContent = `Could not draw symbol: ${error.message}`;
-        this.downloadButton.disabled = true;
+        this.svgDownloadButton.disabled = true;
+        this.pngDownloadButton.disabled = true;
       }
     }
 
@@ -183,10 +188,79 @@
     downloadSvg() {
       const source = new XMLSerializer().serializeToString(this.svg);
       const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+      this.triggerDownload(blob, this.mode === "v2" ? "robcode-2.svg" : "robcode-legacy.svg");
+    }
+
+    async downloadPng() {
+      const originalLabel = this.pngDownloadButton.textContent;
+      this.pngDownloadButton.disabled = true;
+      this.pngDownloadButton.textContent = "Rendering…";
+      try {
+        const blob = await this.renderPngBlob();
+        this.triggerDownload(blob, this.mode === "v2" ? "robcode-2.png" : "robcode-legacy.png");
+      } catch (error) {
+        this.previewShell.dataset.state = "error";
+        this.symbolStats.textContent = `Could not export PNG: ${error.message}`;
+      } finally {
+        this.pngDownloadButton.disabled = false;
+        this.pngDownloadButton.textContent = originalLabel;
+      }
+    }
+
+    async renderPngBlob() {
+      const clone = this.svg.cloneNode(true);
+      const currentWidth = Number(this.svg.getAttribute("width"));
+      const moduleSize = this.mode === "v2"
+        ? this.integer(this.form.elements.module_size, 18)
+        : 0;
+      const scale = this.mode === "v2" ? Math.max(1, 8 / moduleSize) : 1;
+      const size = this.mode === "v2" && Number.isFinite(currentWidth)
+        ? Math.ceil(currentWidth * scale)
+        : 1024;
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      clone.setAttribute("width", size);
+      clone.setAttribute("height", size);
+      if (!clone.getAttribute("viewBox")) clone.setAttribute("viewBox", `0 0 ${size} ${size}`);
+
+      const source = new XMLSerializer().serializeToString(clone);
+      const svgBlob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+      const image = await this.loadImageBlob(svgBlob);
+      const canvas = this.document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext("2d", { alpha: false });
+      if (!context) throw new Error("Canvas 2D is unavailable");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, size, size);
+      context.drawImage(image, 0, 0, size, size);
+      return this.canvasToBlob(canvas, "image/png");
+    }
+
+    loadImageBlob(blob) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(blob);
+        const image = new Image();
+        const release = () => URL.revokeObjectURL(url);
+        image.onload = () => { release(); resolve(image); };
+        image.onerror = () => { release(); reject(new Error("Browser could not rasterize the SVG")); };
+        image.src = url;
+      });
+    }
+
+    canvasToBlob(canvas, type) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+          if (blob) resolve(blob);
+          else reject(new Error("Browser could not create the image file"));
+        }, type);
+      });
+    }
+
+    triggerDownload(blob, fileName) {
       const url = URL.createObjectURL(blob);
       const link = this.document.createElement("a");
       link.href = url;
-      link.download = this.mode === "v2" ? "robcode-2.svg" : "robcode-legacy.svg";
+      link.download = fileName;
       link.hidden = true;
       this.document.body.appendChild(link);
       link.click();
@@ -194,29 +268,75 @@
       setTimeout(() => URL.revokeObjectURL(url), 0);
     }
 
-    async decodeSvgFile(file) {
+    async decodeFile(file) {
       const maximumSize = 64 * 1024 * 1024;
       this.lastDecoded = null;
       this.decodeResult.hidden = true;
       this.useDecodedButton.hidden = true;
       this.decodePanel.dataset.state = "loading";
       this.decodeBadge.textContent = "Checking";
-      this.decodeStatus.textContent = `Reading ${file.name || "SVG file"}…`;
+      this.decodeStatus.textContent = `Reading ${file.name || "RoBCode file"}…`;
 
       try {
-        if (file.size > maximumSize) throw new Error("SVG file exceeds the 64 MiB limit");
-        if (file.type && file.type !== "image/svg+xml" && !String(file.name).toLowerCase().endsWith(".svg")) {
-          throw new Error("Selected file is not an SVG");
-        }
-        const source = await file.text();
-        const decoded = this.svgImporter.importString(source);
-        this.showDecodedResult(decoded, file.name || "SVG file");
+        if (file.size > maximumSize) throw new Error("File exceeds the 64 MiB limit");
+        const kind = this.detectFileKind(file);
+        const decoded = kind === "svg"
+          ? this.svgImporter.importString(await file.text())
+          : this.rasterSampler.decodeImageData(await this.imageDataFromPng(file));
+        this.showDecodedResult(decoded, file.name || `RoBCode ${kind.toUpperCase()}`);
       } catch (error) {
         const code = error && error.code ? `${error.code}: ` : "";
         this.decodePanel.dataset.state = "error";
         this.decodeBadge.textContent = "Rejected";
-        this.decodeStatus.textContent = `${code}${error.message || "Could not decode SVG"}`;
+        this.decodeStatus.textContent = `${code}${error.message || "Could not decode file"}`;
         this.decodeResult.hidden = true;
+      }
+    }
+
+    detectFileKind(file) {
+      const type = String(file.type || "").toLowerCase();
+      const name = String(file.name || "").toLowerCase();
+      if (type === "image/svg+xml" || name.endsWith(".svg")) return "svg";
+      if (type === "image/png" || name.endsWith(".png")) return "png";
+      throw new Error("Selected file must be an SVG or PNG");
+    }
+
+    async imageDataFromPng(file) {
+      let image;
+      let release = () => {};
+      if (typeof createImageBitmap === "function") {
+        image = await createImageBitmap(file);
+        release = () => image.close();
+      } else {
+        const url = URL.createObjectURL(file);
+        image = await new Promise((resolve, reject) => {
+          const element = new Image();
+          element.onload = () => resolve(element);
+          element.onerror = () => reject(new Error("Browser could not read the PNG"));
+          element.src = url;
+        });
+        release = () => URL.revokeObjectURL(url);
+      }
+
+      try {
+        const width = image.width || image.naturalWidth;
+        const height = image.height || image.naturalHeight;
+        if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+          throw new Error("PNG has invalid dimensions");
+        }
+        if (width !== height) throw new Error("PNG must be square and uncropped");
+        if (width > 16384 || width * height > 40000000) {
+          throw new Error("Decoded PNG dimensions are too large");
+        }
+        const canvas = this.document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) throw new Error("Canvas 2D is unavailable");
+        context.drawImage(image, 0, 0);
+        return context.getImageData(0, 0, width, height);
+      } finally {
+        release();
       }
     }
 
@@ -226,7 +346,8 @@
       const parityLabel = decoded.parityFailures.length === 1 ? "parity warning" : "parity warnings";
       this.decodePanel.dataset.state = "success";
       this.decodeBadge.textContent = "Verified";
-      this.decodeStatus.textContent = `${fileName} is a valid RoBCode 2 SVG.`;
+      const format = decoded.source === "raster" ? "PNG" : "SVG";
+      this.decodeStatus.textContent = `${fileName} is a valid RoBCode 2 ${format}.`;
       this.decodeSummary.textContent = [
         `${decoded.payload.length} payload bytes`,
         `${decoded.correctedSymbols} ${correctionLabel}`,
