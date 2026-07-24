@@ -382,6 +382,107 @@ button {
 
 .secondary-button:hover { background: rgb(255 254 248 / 65%); }
 
+.decode-panel { margin-top: .15rem; }
+
+.decode-badge {
+  border: 1px solid #c9cbc1;
+  border-radius: 999px;
+  padding: .32rem .6rem;
+  color: var(--muted);
+  background: #f5f4ec;
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.decode-panel[data-state="success"] .decode-badge {
+  border-color: #8eb998;
+  color: #256436;
+  background: #edf8ee;
+}
+
+.decode-panel[data-state="error"] .decode-badge {
+  border-color: #d9a095;
+  color: #9c2c1b;
+  background: #fff0ed;
+}
+
+.upload-zone {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  margin-top: .85rem;
+  border: 1px dashed #aeb1a7;
+  border-radius: .65rem;
+  padding: .85rem;
+  background: #faf9f2;
+  transition: border-color .16s ease, background .16s ease;
+}
+
+.upload-zone:hover {
+  border-color: var(--accent-dark);
+  background: #fff9f3;
+}
+
+.upload-zone:focus-within {
+  outline: 3px solid rgb(239 90 60 / 24%);
+  outline-offset: 1px;
+}
+
+.upload-zone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.upload-zone > span:last-child { display: grid; gap: .14rem; }
+.upload-zone small { color: var(--muted); font-size: .68rem; font-weight: 500; }
+
+.upload-icon {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--ink);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.decode-status {
+  display: block;
+  min-height: 1.2rem;
+  color: var(--muted);
+  font-size: .7rem;
+  line-height: 1.45;
+}
+
+.decode-panel[data-state="error"] .decode-status { color: #9c2c1b; }
+
+.decode-result {
+  display: grid;
+  gap: .65rem;
+  border-top: 1px solid #e1e0d7;
+  padding-top: .85rem;
+}
+
+.decode-result textarea {
+  min-height: 7rem;
+  margin: 0;
+  background: #f7f6ef;
+}
+
+.decode-summary {
+  color: #36533d;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: .68rem;
+  line-height: 1.5;
+}
+
 .preview-shell {
   position: sticky;
   top: 1.25rem;

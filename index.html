@@ -8,7 +8,9 @@
   <link rel="stylesheet" href="style.css">
   <script src="lib/rob-code.js" defer></script>
   <script src="lib/rob-code-v2.js" defer></script>
+  <script src="lib/rob-code-v2-decoder.js" defer></script>
   <script src="lib/rob-code-v2-svg.js" defer></script>
+  <script src="lib/rob-code-v2-svg-importer.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -175,6 +177,31 @@
         <button type="submit" class="primary-button">Draw RoBCode</button>
         <button type="button" class="secondary-button" data-action="download">Download SVG</button>
       </div>
+
+      <section class="panel decode-panel" data-mode-section="v2">
+        <div class="panel-heading">
+          <div>
+            <p class="section-number">05 / Verify</p>
+            <h2>Decode an SVG</h2>
+          </div>
+          <span class="decode-badge" id="decode_badge">Ready</span>
+        </div>
+        <p class="field-note">Import a RoBCode 2 SVG created by this studio. The file is validated locally and never uploaded.</p>
+        <label class="upload-zone" for="svg_upload">
+          <input id="svg_upload" name="svg_upload" type="file" accept="image/svg+xml,.svg">
+          <span class="upload-icon" aria-hidden="true">↥</span>
+          <span><strong>Choose an SVG file</strong><small>RoBCode 2 · maximum 64 MiB</small></span>
+        </label>
+        <output id="decode_status" class="decode-status" aria-live="polite">No file selected.</output>
+
+        <div class="decode-result" id="decode_result" hidden>
+          <div class="decode-summary" id="decode_summary"></div>
+          <label for="decoded_payload">Verified payload</label>
+          <textarea id="decoded_payload" rows="6" readonly></textarea>
+          <p class="field-note" id="decode_preview_note"></p>
+          <button type="button" class="secondary-button" data-action="use-decoded" hidden>Use text as payload</button>
+        </div>
+      </section>
     </form>
 
     <section class="preview-shell" aria-label="RoBCode preview">

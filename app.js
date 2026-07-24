@@ -20,9 +20,20 @@
       this.symbolStats = documentRoot.getElementById("symbol_stats");
       this.inputCount = documentRoot.getElementById("input_count");
       this.downloadButton = this.form.querySelector("[data-action='download']");
+      this.svgUpload = documentRoot.getElementById("svg_upload");
+      this.decodePanel = documentRoot.querySelector(".decode-panel");
+      this.decodeBadge = documentRoot.getElementById("decode_badge");
+      this.decodeStatus = documentRoot.getElementById("decode_status");
+      this.decodeResult = documentRoot.getElementById("decode_result");
+      this.decodeSummary = documentRoot.getElementById("decode_summary");
+      this.decodedPayload = documentRoot.getElementById("decoded_payload");
+      this.decodePreviewNote = documentRoot.getElementById("decode_preview_note");
+      this.useDecodedButton = this.form.querySelector("[data-action='use-decoded']");
       this.colourInputs = Array.from(this.form.querySelectorAll("[data-bit-colour]"));
       this.legacyRenderer = new RoBCodeRenderer(this.svg);
       this.v2Renderer = new RoBCode2SvgRenderer(this.svg);
+      this.svgImporter = new RoBCode2SvgImporter();
+      this.lastDecoded = null;
       this.drawTimer = null;
       this.bindEvents();
       this.syncMode();
@@ -37,6 +48,7 @@
       });
       this.form.addEventListener("change", event => {
         if (!event.target.matches("input, select, textarea")) return;
+        if (event.target === this.svgUpload) return;
         if (event.target.name === "mode") this.syncMode();
         this.draw();
       });
@@ -47,6 +59,11 @@
         this.draw();
       });
       this.downloadButton.addEventListener("click", () => this.downloadSvg());
+      this.svgUpload.addEventListener("change", () => {
+        const file = this.svgUpload.files && this.svgUpload.files[0];
+        if (file) this.decodeSvgFile(file);
+      });
+      this.useDecodedButton.addEventListener("click", () => this.useDecodedText());
     }
 
     get mode() {
@@ -175,6 +192,84 @@
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+
+    async decodeSvgFile(file) {
+      const maximumSize = 64 * 1024 * 1024;
+      this.lastDecoded = null;
+      this.decodeResult.hidden = true;
+      this.useDecodedButton.hidden = true;
+      this.decodePanel.dataset.state = "loading";
+      this.decodeBadge.textContent = "Checking";
+      this.decodeStatus.textContent = `Reading ${file.name || "SVG file"}…`;
+
+      try {
+        if (file.size > maximumSize) throw new Error("SVG file exceeds the 64 MiB limit");
+        if (file.type && file.type !== "image/svg+xml" && !String(file.name).toLowerCase().endsWith(".svg")) {
+          throw new Error("Selected file is not an SVG");
+        }
+        const source = await file.text();
+        const decoded = this.svgImporter.importString(source);
+        this.showDecodedResult(decoded, file.name || "SVG file");
+      } catch (error) {
+        const code = error && error.code ? `${error.code}: ` : "";
+        this.decodePanel.dataset.state = "error";
+        this.decodeBadge.textContent = "Rejected";
+        this.decodeStatus.textContent = `${code}${error.message || "Could not decode SVG"}`;
+        this.decodeResult.hidden = true;
+      }
+    }
+
+    showDecodedResult(decoded, fileName) {
+      this.lastDecoded = decoded;
+      const correctionLabel = decoded.correctedSymbols === 1 ? "symbol corrected" : "symbols corrected";
+      const parityLabel = decoded.parityFailures.length === 1 ? "parity warning" : "parity warnings";
+      this.decodePanel.dataset.state = "success";
+      this.decodeBadge.textContent = "Verified";
+      this.decodeStatus.textContent = `${fileName} is a valid RoBCode 2 SVG.`;
+      this.decodeSummary.textContent = [
+        `${decoded.payload.length} payload bytes`,
+        `${decoded.correctedSymbols} ${correctionLabel}`,
+        `${decoded.parityFailures.length} ${parityLabel}`,
+        `outer ring ${decoded.outerDataRing}`
+      ].join(" · ");
+
+      const preview = this.formatDecodedPayload(decoded);
+      this.decodedPayload.value = preview.value;
+      this.decodePreviewNote.textContent = preview.note;
+      this.useDecodedButton.hidden = decoded.text === null;
+      this.decodeResult.hidden = false;
+    }
+
+    formatDecodedPayload(decoded) {
+      const previewLimit = 10000;
+      if (decoded.text !== null) {
+        const truncated = decoded.text.length > previewLimit;
+        return {
+          value: truncated ? `${decoded.text.slice(0, previewLimit)}\n…` : decoded.text,
+          note: truncated
+            ? `Text preview is limited to ${previewLimit.toLocaleString()} characters; validation used the complete payload.`
+            : "Validated UTF-8 text payload."
+        };
+      }
+
+      const bytes = decoded.payload.slice(0, 4096);
+      const value = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join(" ");
+      const truncated = decoded.payload.length > bytes.length;
+      return {
+        value: truncated ? `${value}\n…` : value,
+        note: truncated
+          ? "Binary preview is limited to 4,096 bytes; validation used the complete payload."
+          : "Binary payload shown as hexadecimal bytes."
+      };
+    }
+
+    useDecodedText() {
+      if (!this.lastDecoded || this.lastDecoded.text === null) return;
+      this.form.elements.the_text.value = this.lastDecoded.text;
+      this.updateInputCount(this.lastDecoded.text);
+      this.draw();
+      this.form.elements.the_text.focus();
     }
 
     integer(field, fallback) {
