@@ -12,22 +12,35 @@ function createRaster(symbol, options = {}) {
   const ellipseScaleX = options.ellipseScaleX || 1;
   const ellipseScaleY = options.ellipseScaleY || 1;
   const ellipseRotation = (options.ellipseRotation || 0) * Math.PI / 180;
+  const projectiveX = options.projectiveX || 0;
+  const projectiveY = options.projectiveY || 0;
   const background = options.background || [255, 254, 248];
   const ink = options.ink || [17, 23, 19];
   const dataInk = options.dataInk || ink;
   const flippedCells = options.flippedCells || new Set();
-  const size = Math.round(2 * (symbol.outerDataRing + 2.85) * moduleSize);
+  const perspectiveMargin = Math.hypot(projectiveX, projectiveY) > 0 ? 3 : 0;
+  const size = Math.round(2 * (symbol.outerDataRing + 2.85 + perspectiveMargin) * moduleSize);
   const center = size / 2;
+  const outerRadius = (symbol.outerDataRing + 1.35) * moduleSize;
   const data = new Uint8ClampedArray(size * size * 4);
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const dx = x + 0.5 - center;
       const dy = y + 0.5 - center;
-      const localX = Math.cos(ellipseRotation) * dx + Math.sin(ellipseRotation) * dy;
-      const localY = -Math.sin(ellipseRotation) * dx + Math.cos(ellipseRotation) * dy;
-      const normalizedX = localX / ellipseScaleX;
-      const normalizedY = localY / ellipseScaleY;
+      const cosine = Math.cos(ellipseRotation);
+      const sine = Math.sin(ellipseRotation);
+      const transformA = cosine * ellipseScaleX;
+      const transformB = -sine * ellipseScaleY;
+      const transformC = sine * ellipseScaleX;
+      const transformD = cosine * ellipseScaleY;
+      const inverseA = transformA - dx * projectiveX / outerRadius;
+      const inverseB = transformB - dx * projectiveY / outerRadius;
+      const inverseC = transformC - dy * projectiveX / outerRadius;
+      const inverseD = transformD - dy * projectiveY / outerRadius;
+      const determinant = inverseA * inverseD - inverseB * inverseC;
+      const normalizedX = (inverseD * dx - inverseB * dy) / determinant;
+      const normalizedY = (-inverseC * dx + inverseA * dy) / determinant;
       const radius = Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY) / moduleSize;
       const imageAngle = (Math.atan2(normalizedX, -normalizedY) * 180 / Math.PI + 360) % 360;
       const logicalAngle = ((direction * (imageAngle - rotation)) % 360 + 360) % 360;
@@ -173,6 +186,37 @@ test("rectifies a mirrored and rotated ellipse", () => {
   assert.equal(decoded.text, "mirrored ellipse");
   assert.equal(decoded.rasterMetadata.mirrored, true);
   assert.ok(Math.abs(decoded.rasterMetadata.axisRatio - 0.7) < 0.03);
+});
+
+test("rectifies a general horizontal and vertical projective warp", () => {
+  const symbol = new RoBCode2Encoder().encodeText("projective keystone");
+  const decoded = new RoBCode2RasterSampler().decodeImageData(createRaster(symbol, {
+    moduleSize: 24,
+    rotation: 39,
+    projectiveX: 0.2,
+    projectiveY: -0.14
+  }));
+
+  assert.equal(decoded.text, "projective keystone");
+  assert.equal(decoded.rasterMetadata.projectionModel, "projective");
+  assert.ok(decoded.rasterMetadata.perspectiveStrength > 0.1);
+});
+
+test("rectifies projective, affine, rotated and mirrored distortion together", () => {
+  const symbol = new RoBCode2Encoder().encodeText("combined camera warp");
+  const decoded = new RoBCode2RasterSampler().decodeImageData(createRaster(symbol, {
+    moduleSize: 26,
+    rotation: 127,
+    mirrored: true,
+    ellipseScaleY: 0.72,
+    ellipseRotation: 28,
+    projectiveX: -0.16,
+    projectiveY: 0.12
+  }));
+
+  assert.equal(decoded.text, "combined camera warp");
+  assert.equal(decoded.rasterMetadata.mirrored, true);
+  assert.equal(decoded.rasterMetadata.projectionModel, "projective");
 });
 
 test("rejects an ellipse compressed beyond the configured limit", () => {

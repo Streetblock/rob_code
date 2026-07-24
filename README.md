@@ -41,10 +41,12 @@ localizes the continuous outer frame and then detects ring scale, rotation, and
 mirroring before invoking the cell decoder. Rectangular canvases, offset
 symbols, extra margins, and cropping within the quiet zone are supported.
 Reliable sampling requires at least eight image pixels per module. The outer
-frame must remain complete. Rotated affine ellipses, including mirrored
-symbols, are rectified automatically down to a configurable axis ratio of
-`0.35`. General keystone/projective homography correction is not yet part of
-this layer.
+frame must remain complete. Rotated affine ellipses and general projective
+keystone distortion, including mirrored symbols and combinations of both, are
+rectified automatically. The sampler fits the projected outer circle as a
+general ellipse and uses the isolated center finder to recover the remaining
+projective component. The configurable minimum ellipse axis ratio defaults to
+`0.35`; extremely oblique or incomplete symbols are rejected.
 The studio can export the current symbol as a lossless PNG at a decodable
 resolution and can locally validate and decode lossless PNG files
 through the same result panel used for SVG imports.
