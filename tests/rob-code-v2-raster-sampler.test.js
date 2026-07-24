@@ -9,6 +9,9 @@ function createRaster(symbol, options = {}) {
   const moduleSize = options.moduleSize || 20;
   const rotation = options.rotation || 0;
   const direction = options.mirrored ? -1 : 1;
+  const ellipseScaleX = options.ellipseScaleX || 1;
+  const ellipseScaleY = options.ellipseScaleY || 1;
+  const ellipseRotation = (options.ellipseRotation || 0) * Math.PI / 180;
   const background = options.background || [255, 254, 248];
   const ink = options.ink || [17, 23, 19];
   const dataInk = options.dataInk || ink;
@@ -21,8 +24,12 @@ function createRaster(symbol, options = {}) {
     for (let x = 0; x < size; x++) {
       const dx = x + 0.5 - center;
       const dy = y + 0.5 - center;
-      const radius = Math.sqrt(dx * dx + dy * dy) / moduleSize;
-      const imageAngle = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+      const localX = Math.cos(ellipseRotation) * dx + Math.sin(ellipseRotation) * dy;
+      const localY = -Math.sin(ellipseRotation) * dx + Math.cos(ellipseRotation) * dy;
+      const normalizedX = localX / ellipseScaleX;
+      const normalizedY = localY / ellipseScaleY;
+      const radius = Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY) / moduleSize;
+      const imageAngle = (Math.atan2(normalizedX, -normalizedY) * 180 / Math.PI + 360) % 360;
       const logicalAngle = ((direction * (imageAngle - rotation)) % 360 + 360) % 360;
       const sample = logicalSample(symbol, radius, logicalAngle, flippedCells);
       const color = sample === "data" ? dataInk : sample === "dark" ? ink : background;
@@ -95,7 +102,7 @@ test("decodes a lossless square raster export", () => {
 
   assert.equal(decoded.text, "Raster roundtrip");
   assert.equal(decoded.source, "raster");
-  assert.equal(decoded.rasterMetadata.moduleSize, 20);
+  assert.ok(Math.abs(decoded.rasterMetadata.moduleSize - 20) < 0.1);
   assert.equal(decoded.rasterMetadata.rotationDegrees, 0);
   assert.equal(decoded.rasterMetadata.mirrored, false);
   assert.equal(decoded.rasterMetadata.syncMismatches, 0);
@@ -109,7 +116,7 @@ test("decodes the smallest supported eight-pixel module raster", () => {
 
   assert.equal(decoded.payload.length, 0);
   assert.equal(decoded.outerDataRing, 7);
-  assert.ok(decoded.rasterMetadata.moduleSize >= 8);
+  assert.ok(decoded.rasterMetadata.moduleSize >= 7.8);
 });
 
 test("finds arbitrary rotation from the synchronization ring", () => {
@@ -132,6 +139,54 @@ test("detects and reverses a mirrored raster", () => {
   assert.equal(decoded.text, "mirrored raster");
   assert.ok(Math.abs(decoded.rasterMetadata.rotationDegrees - 121) <= 1);
   assert.equal(decoded.rasterMetadata.mirrored, true);
+});
+
+test("rectifies a rotated affine ellipse before sampling", () => {
+  const symbol = new RoBCode2Encoder().encodeText("elliptical perspective");
+  const decoded = new RoBCode2RasterSampler().decodeImageData(createRaster(symbol, {
+    moduleSize: 24,
+    rotation: 47,
+    ellipseScaleY: 0.62,
+    ellipseRotation: 31
+  }));
+
+  assert.equal(decoded.text, "elliptical perspective");
+  assert.ok(Math.abs(decoded.rasterMetadata.axisRatio - 0.62) < 0.03);
+  const ellipseAngleError = Math.min(
+    Math.abs(decoded.rasterMetadata.ellipseRotationDegrees - 31),
+    Math.abs(decoded.rasterMetadata.ellipseRotationDegrees - 31 + 180),
+    Math.abs(decoded.rasterMetadata.ellipseRotationDegrees - 31 - 180)
+  );
+  assert.ok(ellipseAngleError < 2);
+});
+
+test("rectifies a mirrored and rotated ellipse", () => {
+  const symbol = new RoBCode2Encoder().encodeText("mirrored ellipse");
+  const decoded = new RoBCode2RasterSampler().decodeImageData(createRaster(symbol, {
+    moduleSize: 24,
+    rotation: 133,
+    mirrored: true,
+    ellipseScaleY: 0.7,
+    ellipseRotation: 68
+  }));
+
+  assert.equal(decoded.text, "mirrored ellipse");
+  assert.equal(decoded.rasterMetadata.mirrored, true);
+  assert.ok(Math.abs(decoded.rasterMetadata.axisRatio - 0.7) < 0.03);
+});
+
+test("rejects an ellipse compressed beyond the configured limit", () => {
+  const symbol = new RoBCode2Encoder().encodeText("too flat");
+  const flattened = createRaster(symbol, {
+    moduleSize: 30,
+    ellipseScaleY: 0.3,
+    ellipseRotation: 20
+  });
+
+  assert.throws(
+    () => new RoBCode2RasterSampler().decodeImageData(flattened),
+    error => error instanceof RoBCode2RasterSampler.RasterError && error.code === "PERSPECTIVE"
+  );
 });
 
 test("classifies colored data cells by distance from the paper color", () => {

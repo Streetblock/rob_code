@@ -41,8 +41,10 @@ localizes the continuous outer frame and then detects ring scale, rotation, and
 mirroring before invoking the cell decoder. Rectangular canvases, offset
 symbols, extra margins, and cropping within the quiet zone are supported.
 Reliable sampling requires at least eight image pixels per module. The outer
-frame must remain complete. Perspective correction is not yet part of this
-layer.
+frame must remain complete. Rotated affine ellipses, including mirrored
+symbols, are rectified automatically down to a configurable axis ratio of
+`0.35`. General keystone/projective homography correction is not yet part of
+this layer.
 The studio can export the current symbol as a lossless PNG at a decodable
 resolution and can locally validate and decode lossless PNG files
 through the same result panel used for SVG imports.
