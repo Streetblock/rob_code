@@ -1,0 +1,145 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const RoBCode2Encoder = require("../lib/rob-code-v2.js");
+const RoBCode2RasterSampler = require("../lib/rob-code-v2-raster-sampler.js");
+
+const SYNC_BITS = "110111111010100000001111001100110010";
+
+function createRaster(symbol, options = {}) {
+  const moduleSize = options.moduleSize || 20;
+  const rotation = options.rotation || 0;
+  const direction = options.mirrored ? -1 : 1;
+  const background = options.background || [255, 254, 248];
+  const ink = options.ink || [17, 23, 19];
+  const dataInk = options.dataInk || ink;
+  const flippedCells = options.flippedCells || new Set();
+  const size = Math.round(2 * (symbol.outerDataRing + 2.85) * moduleSize);
+  const center = size / 2;
+  const data = new Uint8ClampedArray(size * size * 4);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x + 0.5 - center;
+      const dy = y + 0.5 - center;
+      const radius = Math.sqrt(dx * dx + dy * dy) / moduleSize;
+      const imageAngle = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+      const logicalAngle = ((direction * (imageAngle - rotation)) % 360 + 360) % 360;
+      const sample = logicalSample(symbol, radius, logicalAngle, flippedCells);
+      const color = sample === "data" ? dataInk : sample === "dark" ? ink : background;
+      const offset = (y * size + x) * 4;
+      data[offset] = color[0];
+      data[offset + 1] = color[1];
+      data[offset + 2] = color[2];
+      data[offset + 3] = 255;
+    }
+  }
+  return { width: size, height: size, data };
+}
+
+function logicalSample(symbol, radius, angle, flippedCells) {
+  if (radius < 0.5 || (radius >= 0.7 && radius < 0.9)) return "dark";
+  if (radius >= 1 && radius < 2) {
+    return SYNC_BITS[Math.floor(angle / 10)] === "1" ? "dark" : "light";
+  }
+  if (radius >= 2 && radius < symbol.outerDataRing + 1) {
+    const ring = Math.floor(radius);
+    if (ring >= 2 && ring <= symbol.outerDataRing) {
+      const ringData = symbol.rings[ring - 2];
+      const cell = Math.floor(angle / 360 * ringData.cells.length);
+      const globalCell = ringData.byteOffset * 9 + cell;
+      const value = ringData.cells[cell] ^ Number(flippedCells.has(globalCell));
+      return value ? "data" : "light";
+    }
+  }
+  if (radius >= symbol.outerDataRing + 1.15 && radius < symbol.outerDataRing + 1.35) {
+    return "dark";
+  }
+  return "light";
+}
+
+test("decodes a lossless square raster export", () => {
+  const symbol = new RoBCode2Encoder().encodeText("Raster roundtrip");
+  const decoded = new RoBCode2RasterSampler().decodeImageData(createRaster(symbol));
+
+  assert.equal(decoded.text, "Raster roundtrip");
+  assert.equal(decoded.source, "raster");
+  assert.equal(decoded.rasterMetadata.moduleSize, 20);
+  assert.equal(decoded.rasterMetadata.rotationDegrees, 0);
+  assert.equal(decoded.rasterMetadata.mirrored, false);
+  assert.equal(decoded.rasterMetadata.syncMismatches, 0);
+});
+
+test("decodes the smallest supported eight-pixel module raster", () => {
+  const symbol = new RoBCode2Encoder().encodeBytes([]);
+  const decoded = new RoBCode2RasterSampler().decodeImageData(
+    createRaster(symbol, { moduleSize: 8 })
+  );
+
+  assert.equal(decoded.payload.length, 0);
+  assert.equal(decoded.outerDataRing, 7);
+  assert.ok(decoded.rasterMetadata.moduleSize >= 8);
+});
+
+test("finds arbitrary rotation from the synchronization ring", () => {
+  const symbol = new RoBCode2Encoder().encodeText("rotated raster");
+  const decoded = new RoBCode2RasterSampler().decodeImageData(
+    createRaster(symbol, { rotation: 73 })
+  );
+
+  assert.equal(decoded.text, "rotated raster");
+  assert.ok(Math.abs(decoded.rasterMetadata.rotationDegrees - 73) <= 1);
+  assert.equal(decoded.rasterMetadata.mirrored, false);
+});
+
+test("detects and reverses a mirrored raster", () => {
+  const symbol = new RoBCode2Encoder().encodeText("mirrored raster");
+  const decoded = new RoBCode2RasterSampler().decodeImageData(
+    createRaster(symbol, { rotation: 121, mirrored: true })
+  );
+
+  assert.equal(decoded.text, "mirrored raster");
+  assert.ok(Math.abs(decoded.rasterMetadata.rotationDegrees - 121) <= 1);
+  assert.equal(decoded.rasterMetadata.mirrored, true);
+});
+
+test("classifies colored data cells by distance from the paper color", () => {
+  const symbol = new RoBCode2Encoder().encodeText("yellow data");
+  const decoded = new RoBCode2RasterSampler().decodeImageData(createRaster(symbol, {
+    dataInk: [232, 214, 44]
+  }));
+
+  assert.equal(decoded.text, "yellow data");
+});
+
+test("passes a damaged raster cell to Reed-Solomon correction", () => {
+  const symbol = new RoBCode2Encoder().encodeText("correct raster damage");
+  const flippedCells = new Set([48 * 9]);
+  const decoded = new RoBCode2RasterSampler().decodeImageData(
+    createRaster(symbol, { flippedCells })
+  );
+
+  assert.equal(decoded.text, "correct raster damage");
+  assert.equal(decoded.correctedSymbols, 1);
+  assert.deepEqual(decoded.parityFailures, [48]);
+});
+
+test("rejects blank, non-square, and undersized raster input", () => {
+  const sampler = new RoBCode2RasterSampler();
+  const blank = {
+    width: 100,
+    height: 100,
+    data: new Uint8ClampedArray(100 * 100 * 4).fill(255)
+  };
+  assert.throws(
+    () => sampler.decodeImageData(blank),
+    error => error instanceof RoBCode2RasterSampler.RasterError && error.code === "CONTRAST"
+  );
+  assert.throws(
+    () => sampler.decodeImageData({ width: 100, height: 90, data: new Uint8ClampedArray(36000) }),
+    /must be a square/
+  );
+  assert.throws(
+    () => sampler.decodeImageData({ width: 32, height: 32, data: new Uint8ClampedArray(4096) }),
+    /at least 64 pixels/
+  );
+});

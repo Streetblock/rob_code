@@ -34,6 +34,13 @@ SVG DOM element with `RoBCode2SvgImporter` in
 [`lib/rob-code-v2-svg-importer.js`](lib/rob-code-v2-svg-importer.js).
 The RoBCode 2 studio exposes this importer through a local SVG file picker and
 shows the verified payload together with correction and parity diagnostics.
+Lossless, square, uncropped raster exports can be sampled with
+`RoBCode2RasterSampler` in
+[`lib/rob-code-v2-raster-sampler.js`](lib/rob-code-v2-raster-sampler.js). It
+detects the ring scale, rotation, and mirroring before invoking the cell
+decoder. Reliable sampling requires at least eight image pixels per module.
+Perspective correction and camera-image localization are not yet part of this
+layer.
 
 ##History
 Reimplements the earlier Python code, that produced a postscript file as output (ca the summer of 2013/14), and based on the target_library.ps and cardTemplate.ps from Diego Lopez de Iping TripCode generator (Diego's code was in turn, based on Jeremy Henty's code). 
