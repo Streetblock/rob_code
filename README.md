@@ -18,9 +18,10 @@ historical byte-oriented implementation.
 
 The proposed decodable barcode profile is specified independently in
 [`docs/FORMAT.md`](docs/FORMAT.md). Machine-readable golden vectors live in
-[`docs/test-vectors.json`](docs/test-vectors.json). The current application is
-still the Legacy generator; RoBCode 2 implementation starts only after the
-format draft is accepted.
+[`docs/test-vectors.json`](docs/test-vectors.json). The format encoder is
+implemented as the independent `RoBCode2Encoder` class in
+[`lib/rob-code-v2.js`](lib/rob-code-v2.js). The current user interface remains
+the Legacy generator until the RoBCode 2 renderer and controls are added.
 
 ##History
 Reimplements the earlier Python code, that produced a postscript file as output (ca the summer of 2013/14), and based on the target_library.ps and cardTemplate.ps from Diego Lopez de Iping TripCode generator (Diego's code was in turn, based on Jeremy Henty's code). 
