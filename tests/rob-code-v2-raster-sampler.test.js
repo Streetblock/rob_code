@@ -36,6 +36,38 @@ function createRaster(symbol, options = {}) {
   return { width: size, height: size, data };
 }
 
+function reframeRaster(source, options = {}) {
+  const cropLeft = options.cropLeft || 0;
+  const cropRight = options.cropRight || 0;
+  const cropTop = options.cropTop || 0;
+  const cropBottom = options.cropBottom || 0;
+  const marginLeft = options.marginLeft || 0;
+  const marginRight = options.marginRight || 0;
+  const marginTop = options.marginTop || 0;
+  const marginBottom = options.marginBottom || 0;
+  const background = options.background || [255, 255, 255];
+  const copiedWidth = source.width - cropLeft - cropRight;
+  const copiedHeight = source.height - cropTop - cropBottom;
+  const width = marginLeft + copiedWidth + marginRight;
+  const height = marginTop + copiedHeight + marginBottom;
+  const data = new Uint8ClampedArray(width * height * 4);
+
+  for (let offset = 0; offset < data.length; offset += 4) {
+    data[offset] = background[0];
+    data[offset + 1] = background[1];
+    data[offset + 2] = background[2];
+    data[offset + 3] = 255;
+  }
+  for (let y = 0; y < copiedHeight; y++) {
+    for (let x = 0; x < copiedWidth; x++) {
+      const sourceOffset = ((y + cropTop) * source.width + x + cropLeft) * 4;
+      const targetOffset = ((y + marginTop) * width + x + marginLeft) * 4;
+      data.set(source.data.subarray(sourceOffset, sourceOffset + 4), targetOffset);
+    }
+  }
+  return { width, height, data };
+}
+
 function logicalSample(symbol, radius, angle, flippedCells) {
   if (radius < 0.5 || (radius >= 0.7 && radius < 0.9)) return "dark";
   if (radius >= 1 && radius < 2) {
@@ -123,7 +155,51 @@ test("passes a damaged raster cell to Reed-Solomon correction", () => {
   assert.deepEqual(decoded.parityFailures, [48]);
 });
 
-test("rejects blank, non-square, and undersized raster input", () => {
+test("localizes an off-center symbol on a rectangular canvas", () => {
+  const symbol = new RoBCode2Encoder().encodeText("off-center canvas");
+  const source = createRaster(symbol);
+  const framed = reframeRaster(source, {
+    marginLeft: 120,
+    marginRight: 20,
+    marginTop: 35,
+    marginBottom: 95
+  });
+  const decoded = new RoBCode2RasterSampler().decodeImageData(framed);
+
+  assert.equal(decoded.text, "off-center canvas");
+  assert.ok(framed.width !== framed.height);
+  assert.ok(decoded.rasterMetadata.centerX > framed.width / 2);
+  assert.ok(decoded.rasterMetadata.centerY < framed.height / 2);
+});
+
+test("decodes after asymmetric cropping removes most of the quiet zone", () => {
+  const symbol = new RoBCode2Encoder().encodeText("cropped quiet zone");
+  const source = createRaster(symbol);
+  const cropped = reframeRaster(source, {
+    cropLeft: 24,
+    cropRight: 10,
+    cropTop: 28,
+    cropBottom: 5
+  });
+  const decoded = new RoBCode2RasterSampler().decodeImageData(cropped);
+
+  assert.equal(decoded.text, "cropped quiet zone");
+  assert.ok(decoded.rasterMetadata.foregroundBounds.left < 10);
+  assert.ok(decoded.rasterMetadata.foregroundBounds.top < 10);
+});
+
+test("rejects cropping that cuts through the continuous outer frame", () => {
+  const symbol = new RoBCode2Encoder().encodeText("damaged frame");
+  const source = createRaster(symbol);
+  const cutFrame = reframeRaster(source, { cropLeft: 45 });
+
+  assert.throws(
+    () => new RoBCode2RasterSampler().decodeImageData(cutFrame),
+    error => error instanceof RoBCode2RasterSampler.RasterError
+  );
+});
+
+test("rejects blank and undersized raster input", () => {
   const sampler = new RoBCode2RasterSampler();
   const blank = {
     width: 100,
@@ -133,10 +209,6 @@ test("rejects blank, non-square, and undersized raster input", () => {
   assert.throws(
     () => sampler.decodeImageData(blank),
     error => error instanceof RoBCode2RasterSampler.RasterError && error.code === "CONTRAST"
-  );
-  assert.throws(
-    () => sampler.decodeImageData({ width: 100, height: 90, data: new Uint8ClampedArray(36000) }),
-    /must be a square/
   );
   assert.throws(
     () => sampler.decodeImageData({ width: 32, height: 32, data: new Uint8ClampedArray(4096) }),

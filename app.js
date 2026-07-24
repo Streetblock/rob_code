@@ -324,8 +324,7 @@
         if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
           throw new Error("PNG has invalid dimensions");
         }
-        if (width !== height) throw new Error("PNG must be square and uncropped");
-        if (width > 16384 || width * height > 40000000) {
+        if (width > 16384 || height > 16384 || width * height > 40000000) {
           throw new Error("Decoded PNG dimensions are too large");
         }
         const canvas = this.document.createElement("canvas");

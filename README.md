@@ -34,15 +34,17 @@ SVG DOM element with `RoBCode2SvgImporter` in
 [`lib/rob-code-v2-svg-importer.js`](lib/rob-code-v2-svg-importer.js).
 The RoBCode 2 studio exposes this importer through a local SVG file picker and
 shows the verified payload together with correction and parity diagnostics.
-Lossless, square, uncropped raster exports can be sampled with
+Lossless raster exports can be sampled with
 `RoBCode2RasterSampler` in
 [`lib/rob-code-v2-raster-sampler.js`](lib/rob-code-v2-raster-sampler.js). It
-detects the ring scale, rotation, and mirroring before invoking the cell
-decoder. Reliable sampling requires at least eight image pixels per module.
-Perspective correction and camera-image localization are not yet part of this
+localizes the continuous outer frame and then detects ring scale, rotation, and
+mirroring before invoking the cell decoder. Rectangular canvases, offset
+symbols, extra margins, and cropping within the quiet zone are supported.
+Reliable sampling requires at least eight image pixels per module. The outer
+frame must remain complete. Perspective correction is not yet part of this
 layer.
 The studio can export the current symbol as a lossless PNG at a decodable
-resolution and can locally validate and decode square, uncropped PNG files
+resolution and can locally validate and decode lossless PNG files
 through the same result panel used for SVG imports.
 
 ##History
