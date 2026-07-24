@@ -31,7 +31,7 @@ test("exposes both generator modes and the SVG download control", () => {
   assert.match(html, /data-mode-section="legacy" hidden/);
   assert.match(html, /data-action="download-svg"/);
   assert.match(html, /data-action="download-png"/);
-  assert.match(html, /name="code_upload"[^>]*accept="image\/svg\+xml,image\/png,\.svg,\.png"/);
+  assert.match(html, /name="code_upload"[^>]*accept="image\/svg\+xml,image\/png,image\/jpeg,\.svg,\.png,\.jpg,\.jpeg"/);
   assert.match(html, /data-action="use-decoded"/);
 });
 
@@ -96,7 +96,10 @@ test("routes PNG files through canvas image data and the raster sampler", async 
   app.decodePanel = { dataset: {} };
   app.decodeBadge = { textContent: "" };
   app.decodeStatus = { textContent: "" };
-  app.imageDataFromPng = async () => imageData;
+  app.imageDataFromImage = async (file, kind) => {
+    assert.equal(kind, "png");
+    return imageData;
+  };
   app.rasterSampler = {
     decodeImageData(actual) { assert.equal(actual, imageData); return expected; }
   };
@@ -106,11 +109,37 @@ test("routes PNG files through canvas image data and the raster sampler", async 
   assert.deepEqual(shown, { decoded: expected, name: "valid.png" });
 });
 
-test("recognizes only SVG and PNG file types", () => {
+test("routes JPEG photos through canvas image data and the raster sampler", async () => {
+  const app = Object.create(RoBCodeApp.prototype);
+  const imageData = { width: 100, height: 100, data: new Uint8ClampedArray(40000) };
+  const expected = { source: "raster", text: "jpeg", payload: Uint8Array.of(), parityFailures: [] };
+  let shown = null;
+  app.decodeResult = { hidden: false };
+  app.useDecodedButton = { hidden: false };
+  app.decodePanel = { dataset: {} };
+  app.decodeBadge = { textContent: "" };
+  app.decodeStatus = { textContent: "" };
+  app.imageDataFromImage = async (file, kind) => {
+    assert.equal(kind, "jpeg");
+    return imageData;
+  };
+  app.rasterSampler = {
+    decodeImageData(actual) { assert.equal(actual, imageData); return expected; }
+  };
+  app.showDecodedResult = (decoded, name, kind) => { shown = { decoded, name, kind }; };
+
+  await app.decodeFile({ name: "photo.jpeg", type: "image/jpeg", size: 100 });
+  assert.deepEqual(shown, { decoded: expected, name: "photo.jpeg", kind: "jpeg" });
+});
+
+test("recognizes SVG, PNG, and JPEG file types", () => {
   const app = Object.create(RoBCodeApp.prototype);
   assert.equal(app.detectFileKind({ name: "code.svg", type: "" }), "svg");
   assert.equal(app.detectFileKind({ name: "code.bin", type: "image/png" }), "png");
-  assert.throws(() => app.detectFileKind({ name: "photo.jpg", type: "image/jpeg" }), /SVG or PNG/);
+  assert.equal(app.detectFileKind({ name: "photo.jpg", type: "" }), "jpeg");
+  assert.equal(app.detectFileKind({ name: "photo.bin", type: "image/jpeg" }), "jpeg");
+  assert.equal(app.detectFileKind({ name: "photo.jpeg", type: "" }), "jpeg");
+  assert.throws(() => app.detectFileKind({ name: "code.gif", type: "image/gif" }), /SVG, PNG, or JPEG/);
 });
 
 test("upscales PNG export to at least eight pixels per module", async () => {

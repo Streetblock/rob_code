@@ -282,8 +282,8 @@
         const kind = this.detectFileKind(file);
         const decoded = kind === "svg"
           ? this.svgImporter.importString(await file.text())
-          : this.rasterSampler.decodeImageData(await this.imageDataFromPng(file));
-        this.showDecodedResult(decoded, file.name || `RoBCode ${kind.toUpperCase()}`);
+          : this.rasterSampler.decodeImageData(await this.imageDataFromImage(file, kind));
+        this.showDecodedResult(decoded, file.name || `RoBCode ${kind.toUpperCase()}`, kind);
       } catch (error) {
         const code = error && error.code ? `${error.code}: ` : "";
         this.decodePanel.dataset.state = "error";
@@ -298,10 +298,12 @@
       const name = String(file.name || "").toLowerCase();
       if (type === "image/svg+xml" || name.endsWith(".svg")) return "svg";
       if (type === "image/png" || name.endsWith(".png")) return "png";
-      throw new Error("Selected file must be an SVG or PNG");
+      if (type === "image/jpeg" || name.endsWith(".jpg") || name.endsWith(".jpeg")) return "jpeg";
+      throw new Error("Selected file must be an SVG, PNG, or JPEG");
     }
 
-    async imageDataFromPng(file) {
+    async imageDataFromImage(file, kind = "raster") {
+      const formatLabel = kind === "jpeg" ? "JPEG" : "PNG";
       let image;
       let release = () => {};
       if (typeof createImageBitmap === "function") {
@@ -312,7 +314,7 @@
         image = await new Promise((resolve, reject) => {
           const element = new Image();
           element.onload = () => resolve(element);
-          element.onerror = () => reject(new Error("Browser could not read the PNG"));
+          element.onerror = () => reject(new Error(`Browser could not read the ${formatLabel}`));
           element.src = url;
         });
         release = () => URL.revokeObjectURL(url);
@@ -322,10 +324,10 @@
         const width = image.width || image.naturalWidth;
         const height = image.height || image.naturalHeight;
         if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
-          throw new Error("PNG has invalid dimensions");
+          throw new Error(`${formatLabel} has invalid dimensions`);
         }
         if (width > 16384 || height > 16384 || width * height > 40000000) {
-          throw new Error("Decoded PNG dimensions are too large");
+          throw new Error(`Decoded ${formatLabel} dimensions are too large`);
         }
         const canvas = this.document.createElement("canvas");
         canvas.width = width;
@@ -339,13 +341,15 @@
       }
     }
 
-    showDecodedResult(decoded, fileName) {
+    showDecodedResult(decoded, fileName, sourceKind) {
       this.lastDecoded = decoded;
       const correctionLabel = decoded.correctedSymbols === 1 ? "symbol corrected" : "symbols corrected";
       const parityLabel = decoded.parityFailures.length === 1 ? "parity warning" : "parity warnings";
       this.decodePanel.dataset.state = "success";
       this.decodeBadge.textContent = "Verified";
-      const format = decoded.source === "raster" ? "PNG" : "SVG";
+      const format = decoded.source === "raster"
+        ? sourceKind === "jpeg" ? "JPEG" : "PNG"
+        : "SVG";
       this.decodeStatus.textContent = `${fileName} is a valid RoBCode 2 ${format}.`;
       this.decodeSummary.textContent = [
         `${decoded.payload.length} payload bytes`,

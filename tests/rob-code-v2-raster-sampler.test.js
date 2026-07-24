@@ -88,6 +88,33 @@ function reframeRaster(source, options = {}) {
   return { width, height, data };
 }
 
+function addPhotoArtifacts(source) {
+  const data = new Uint8ClampedArray(source.data.length);
+  const radius = 1;
+  for (let y = 0; y < source.height; y++) {
+    for (let x = 0; x < source.width; x++) {
+      const targetOffset = (y * source.width + x) * 4;
+      const shade = 0.86 + 0.14 * x / Math.max(1, source.width - 1);
+      for (let channel = 0; channel < 3; channel++) {
+        let sum = 0;
+        let samples = 0;
+        for (let offsetY = -radius; offsetY <= radius; offsetY++) {
+          for (let offsetX = -radius; offsetX <= radius; offsetX++) {
+            const sampleX = Math.max(0, Math.min(source.width - 1, x + offsetX));
+            const sampleY = Math.max(0, Math.min(source.height - 1, y + offsetY));
+            sum += source.data[(sampleY * source.width + sampleX) * 4 + channel];
+            samples += 1;
+          }
+        }
+        const noise = ((x * 17 + y * 31 + channel * 13) % 17) - 8;
+        data[targetOffset + channel] = Math.round((sum / samples * shade + noise) / 12) * 12;
+      }
+      data[targetOffset + 3] = 255;
+    }
+  }
+  return { width: source.width, height: source.height, data };
+}
+
 function logicalSample(symbol, radius, angle, flippedCells) {
   if (radius < 0.5 || (radius >= 0.7 && radius < 0.9)) return "dark";
   if (radius >= 1 && radius < 2) {
@@ -216,6 +243,23 @@ test("rectifies projective, affine, rotated and mirrored distortion together", (
 
   assert.equal(decoded.text, "combined camera warp");
   assert.equal(decoded.rasterMetadata.mirrored, true);
+  assert.equal(decoded.rasterMetadata.projectionModel, "projective");
+});
+
+test("decodes a photo-like raster with blur, quantization, noise, and uneven light", () => {
+  const symbol = new RoBCode2Encoder().encodeText("JPEG camera photo");
+  const photo = addPhotoArtifacts(createRaster(symbol, {
+    moduleSize: 26,
+    rotation: 55,
+    ellipseScaleY: 0.82,
+    ellipseRotation: 17,
+    projectiveX: 0.12,
+    projectiveY: -0.08
+  }));
+  const decoded = new RoBCode2RasterSampler().decodeImageData(photo);
+
+  assert.equal(decoded.text, "JPEG camera photo");
+  assert.equal(decoded.source, "raster");
   assert.equal(decoded.rasterMetadata.projectionModel, "projective");
 });
 
