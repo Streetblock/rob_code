@@ -70,6 +70,9 @@ handles:
 - projective horizontal and vertical keystone distortion;
 - combinations of perspective, affine tilt, rotation, and mirroring.
 - moderate JPEG quantization, sensor noise, blur, and uneven illumination.
+- unrelated dark objects elsewhere in a larger photographed scene;
+- limited partial cover when missing outer-frame sectors identify affected
+  bytes as Reed-Solomon erasures.
 
 For reliable results:
 
@@ -87,6 +90,12 @@ circle as a general ellipse, uses the isolated center finder to recover the
 remaining projective component, and resolves rotation and direction from the
 synchronization ring. Extremely oblique, incomplete, blurred, or low-contrast
 symbols are rejected rather than decoded as guesses.
+
+Known erasures can recover up to 32 affected byte positions in one
+Reed-Solomon codeword, while unknown errors consume twice that correction
+budget. Recovery is therefore possible only while every affected codeword
+remains within `2 * errors + erasures <= 32`. Large covers through the center
+finder or synchronization ring still make a symbol undecodable.
 
 ## RoBCode 2 at a glance
 

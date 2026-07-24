@@ -64,6 +64,32 @@ test("formats decoded text and binary payloads without injecting markup", () => 
   assert.equal(binaryPreview.value, "00 0f ff");
 });
 
+test("shows JPEG erasure recovery diagnostics", () => {
+  const app = Object.create(RoBCodeApp.prototype);
+  app.decodePanel = { dataset: {} };
+  app.decodeBadge = { textContent: "" };
+  app.decodeStatus = { textContent: "" };
+  app.decodeSummary = { textContent: "" };
+  app.decodedPayload = { value: "" };
+  app.decodePreviewNote = { textContent: "" };
+  app.useDecodedButton = { hidden: true };
+  app.decodeResult = { hidden: true };
+
+  app.showDecodedResult({
+    source: "raster",
+    text: "RoBCode 2",
+    payload: Uint8Array.of(1, 2),
+    correctedSymbols: 1,
+    erasureSymbols: 14,
+    parityFailures: [3],
+    outerDataRing: 10
+  }, "photo.jpg", "jpeg");
+
+  assert.match(app.decodeStatus.textContent, /valid RoBCode 2 JPEG/);
+  assert.match(app.decodeSummary.textContent, /14 frame erasures/);
+  assert.equal(app.decodeBadge.textContent, "Verified");
+});
+
 test("reads an SVG file and forwards only validated importer output", async () => {
   const app = Object.create(RoBCodeApp.prototype);
   const expected = { text: "decoded", payload: Uint8Array.of(1), parityFailures: [] };

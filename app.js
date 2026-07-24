@@ -345,6 +345,8 @@
       this.lastDecoded = decoded;
       const correctionLabel = decoded.correctedSymbols === 1 ? "symbol corrected" : "symbols corrected";
       const parityLabel = decoded.parityFailures.length === 1 ? "parity warning" : "parity warnings";
+      const erasureCount = decoded.erasureSymbols || 0;
+      const erasureLabel = erasureCount === 1 ? "frame erasure" : "frame erasures";
       this.decodePanel.dataset.state = "success";
       this.decodeBadge.textContent = "Verified";
       const format = decoded.source === "raster"
@@ -354,6 +356,7 @@
       this.decodeSummary.textContent = [
         `${decoded.payload.length} payload bytes`,
         `${decoded.correctedSymbols} ${correctionLabel}`,
+        `${erasureCount} ${erasureLabel}`,
         `${decoded.parityFailures.length} ${parityLabel}`,
         `outer ring ${decoded.outerDataRing}`
       ].join(" · ");

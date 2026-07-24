@@ -115,6 +115,64 @@ function addPhotoArtifacts(source) {
   return { width: source.width, height: source.height, data };
 }
 
+function placeRasterInScene(source) {
+  const width = source.width + 520;
+  const height = source.height + 160;
+  const left = 390;
+  const top = 70;
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let offset = 0; offset < data.length; offset += 4) {
+    data[offset] = 222;
+    data[offset + 1] = 224;
+    data[offset + 2] = 221;
+    data[offset + 3] = 255;
+  }
+  for (let y = 0; y < source.height; y++) {
+    for (let x = 0; x < source.width; x++) {
+      const sourceOffset = (y * source.width + x) * 4;
+      const targetOffset = ((y + top) * width + x + left) * 4;
+      data.set(source.data.subarray(sourceOffset, sourceOffset + 4), targetOffset);
+    }
+  }
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < 230; x++) {
+      const offset = (y * width + x) * 4;
+      data[offset] = 24;
+      data[offset + 1] = 27;
+      data[offset + 2] = 25;
+    }
+  }
+  for (let y = 15; y < 32; y++) {
+    for (let x = 260; x < width - 20; x++) {
+      const offset = (y * width + x) * 4;
+      data[offset] = 55;
+      data[offset + 1] = 57;
+      data[offset + 2] = 56;
+    }
+  }
+  return { width, height, data };
+}
+
+function coverTopSector(source) {
+  const result = {
+    width: source.width,
+    height: source.height,
+    data: source.data.slice()
+  };
+  const centerX = source.width / 2;
+  const centerY = source.height / 2;
+  for (let y = 0; y < centerY - 4.5 * 24; y++) {
+    for (let x = Math.floor(centerX - 72); x <= Math.ceil(centerX + 72); x++) {
+      const offset = (y * source.width + x) * 4;
+      result.data[offset] = 238;
+      result.data[offset + 1] = 238;
+      result.data[offset + 2] = 238;
+      result.data[offset + 3] = 255;
+    }
+  }
+  return result;
+}
+
 function logicalSample(symbol, radius, angle, flippedCells) {
   if (radius < 0.5 || (radius >= 0.7 && radius < 0.9)) return "dark";
   if (radius >= 1 && radius < 2) {
@@ -261,6 +319,35 @@ test("decodes a photo-like raster with blur, quantization, noise, and uneven lig
   assert.equal(decoded.text, "JPEG camera photo");
   assert.equal(decoded.source, "raster");
   assert.equal(decoded.rasterMetadata.projectionModel, "projective");
+});
+
+test("isolates a complete symbol among unrelated dark scene objects", () => {
+  const symbol = new RoBCode2Encoder().encodeText("scene localization");
+  const scene = placeRasterInScene(createRaster(symbol, {
+    moduleSize: 20,
+    rotation: 36,
+    ellipseScaleY: 0.76,
+    ellipseRotation: 14,
+    projectiveX: 0.1,
+    projectiveY: -0.06
+  }));
+  const decoded = new RoBCode2RasterSampler().decodeImageData(scene);
+
+  assert.equal(decoded.text, "scene localization");
+  assert.equal(decoded.rasterMetadata.detectedErasures, 0);
+});
+
+test("uses missing frame sectors as erasures for a partially covered photo", () => {
+  const symbol = new RoBCode2Encoder().encodeText("covered photo");
+  const covered = coverTopSector(createRaster(symbol, {
+    moduleSize: 24,
+    rotation: 24
+  }));
+  const decoded = new RoBCode2RasterSampler().decodeImageData(covered);
+
+  assert.equal(decoded.text, "covered photo");
+  assert.ok(decoded.rasterMetadata.detectedErasures > 0);
+  assert.ok(decoded.erasureSymbols > 0);
 });
 
 test("rejects an ellipse compressed beyond the configured limit", () => {

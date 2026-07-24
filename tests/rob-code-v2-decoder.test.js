@@ -66,6 +66,21 @@ test("corrects up to sixteen erroneous symbols in one codeword", () => {
   assert.equal(decoded.parityFailures.length, 16);
 });
 
+test("uses known erasures to recover more than sixteen damaged symbols", () => {
+  const encoder = new RoBCode2Encoder();
+  const decoder = new RoBCode2Decoder();
+  const symbol = encoder.encodeText("Known frame occlusion can identify damaged bytes.");
+  const damaged = symbol.cells.slice();
+  const erasures = Array.from({ length: 20 }, (_, index) => 48 + index);
+  erasures.forEach((byteIndex, index) => flipDataBit(damaged, byteIndex, index % 8));
+
+  const decoded = decoder.decodeCells(damaged, erasures);
+
+  assert.equal(decoded.text, "Known frame occlusion can identify damaged bytes.");
+  assert.equal(decoded.correctedSymbols, 20);
+  assert.equal(decoded.erasureSymbols, 20);
+});
+
 test("corrects header errors before reading the payload length", () => {
   const encoder = new RoBCode2Encoder();
   const decoder = new RoBCode2Decoder();
@@ -125,6 +140,8 @@ test("rejects uncorrectable codewords and invalid padding", () => {
     () => decoder.decodeCells(badPadding),
     error => error instanceof RoBCode2Decoder.DecodeError && error.code === "INVALID_PADDING"
   );
+  const paddingIndex = encoder.encodeText("RoBCode").codeStream.length;
+  assert.equal(decoder.decodeCells(badPadding, [paddingIndex]).text, "RoBCode");
 });
 
 test("decodes consecutive ring objects and rejects malformed sampling", () => {
