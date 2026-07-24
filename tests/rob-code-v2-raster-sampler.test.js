@@ -385,6 +385,17 @@ test("passes a damaged raster cell to Reed-Solomon correction", () => {
   assert.deepEqual(decoded.parityFailures, [48]);
 });
 
+test("reports damaged unused raster padding after validating the payload", () => {
+  const symbol = new RoBCode2Encoder().encodeText("padding remains unprotected");
+  const paddingByte = symbol.codeStream.length;
+  const decoded = new RoBCode2RasterSampler().decodeImageData(createRaster(symbol, {
+    flippedCells: new Set([paddingByte * 9])
+  }));
+
+  assert.equal(decoded.text, "padding remains unprotected");
+  assert.deepEqual(decoded.paddingFailures, [paddingByte]);
+});
+
 test("localizes an off-center symbol on a rectangular canvas", () => {
   const symbol = new RoBCode2Encoder().encodeText("off-center canvas");
   const source = createRaster(symbol);
@@ -418,10 +429,21 @@ test("decodes after asymmetric cropping removes most of the quiet zone", () => {
   assert.ok(decoded.rasterMetadata.foregroundBounds.top < 10);
 });
 
-test("rejects cropping that cuts through the continuous outer frame", () => {
+test("recovers a symbol cropped through one outer edge", () => {
+  const symbol = new RoBCode2Encoder().encodeText("edge-cropped photo");
+  const source = createRaster(symbol, { moduleSize: 24, rotation: 31 });
+  const cropped = reframeRaster(source, { cropRight: 100 });
+  const decoded = new RoBCode2RasterSampler().decodeImageData(cropped);
+
+  assert.equal(decoded.text, "edge-cropped photo");
+  assert.ok(decoded.erasureSymbols > 0);
+  assert.equal(decoded.rasterMetadata.sceneLocalized, true);
+});
+
+test("rejects cropping that removes the center finder", () => {
   const symbol = new RoBCode2Encoder().encodeText("damaged frame");
   const source = createRaster(symbol);
-  const cutFrame = reframeRaster(source, { cropLeft: 45 });
+  const cutFrame = reframeRaster(source, { cropLeft: Math.floor(source.width / 2) });
 
   assert.throws(
     () => new RoBCode2RasterSampler().decodeImageData(cutFrame),

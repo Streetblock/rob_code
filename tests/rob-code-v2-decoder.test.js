@@ -142,6 +142,13 @@ test("rejects uncorrectable codewords and invalid padding", () => {
   );
   const paddingIndex = encoder.encodeText("RoBCode").codeStream.length;
   assert.equal(decoder.decodeCells(badPadding, [paddingIndex]).text, "RoBCode");
+  const toleratedPadding = decoder.decodeCells(
+    badPadding,
+    [],
+    { allowDamagedPadding: true }
+  );
+  assert.equal(toleratedPadding.text, "RoBCode");
+  assert.deepEqual(toleratedPadding.paddingFailures, [paddingIndex]);
 });
 
 test("decodes consecutive ring objects and rejects malformed sampling", () => {

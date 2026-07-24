@@ -82,11 +82,13 @@ test("shows JPEG erasure recovery diagnostics", () => {
     correctedSymbols: 1,
     erasureSymbols: 14,
     parityFailures: [3],
+    paddingFailures: [89, 90],
     outerDataRing: 10
   }, "photo.jpg", "jpeg");
 
   assert.match(app.decodeStatus.textContent, /valid RoBCode 2 JPEG/);
   assert.match(app.decodeSummary.textContent, /14 frame erasures/);
+  assert.match(app.decodeSummary.textContent, /2 padding warnings/);
   assert.equal(app.decodeBadge.textContent, "Verified");
 });
 

@@ -65,7 +65,7 @@ handles:
 - rotation and mirroring;
 - extra margins and an off-center symbol;
 - rectangular images;
-- cropping that leaves the complete outer frame intact;
+- quiet-zone cropping and limited one-sided crops through the outer rings;
 - affine compression and rotated ellipses;
 - projective horizontal and vertical keystone distortion;
 - combinations of perspective, affine tilt, rotation, and mirroring.
@@ -78,7 +78,9 @@ For reliable results:
 
 - use at least eight pixels per module for clean PNG files and preferably
   twelve or more pixels per module for JPEG photos;
-- keep the continuous outer bounding ring complete;
+- keep the continuous outer bounding ring complete whenever possible; a
+  limited edge crop can be recovered only while finder, sync ring, and the
+  Reed-Solomon budget remain sufficient;
 - retain good contrast between every dark cell and the background;
 - avoid blur, reflections, shadows, and extreme viewing angles;
 - keep the projected ellipse axis ratio at or above the default limit of
@@ -96,6 +98,11 @@ Reed-Solomon codeword, while unknown errors consume twice that correction
 budget. Recovery is therefore possible only while every affected codeword
 remains within `2 * errors + erasures <= 32`. Large covers through the center
 finder or synchronization ring still make a symbol undecodable.
+
+After the protected header, payload, and payload CRC have been validated, the
+raster decoder may accept damaged unused padding cells in the final ring. It
+reports them as padding warnings. The strict SVG importer continues to reject
+non-zero padding because generated vector geometry has no sampling ambiguity.
 
 ## RoBCode 2 at a glance
 

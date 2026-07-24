@@ -347,6 +347,8 @@
       const parityLabel = decoded.parityFailures.length === 1 ? "parity warning" : "parity warnings";
       const erasureCount = decoded.erasureSymbols || 0;
       const erasureLabel = erasureCount === 1 ? "frame erasure" : "frame erasures";
+      const paddingFailureCount = (decoded.paddingFailures || []).length;
+      const paddingLabel = paddingFailureCount === 1 ? "padding warning" : "padding warnings";
       this.decodePanel.dataset.state = "success";
       this.decodeBadge.textContent = "Verified";
       const format = decoded.source === "raster"
@@ -358,6 +360,7 @@
         `${decoded.correctedSymbols} ${correctionLabel}`,
         `${erasureCount} ${erasureLabel}`,
         `${decoded.parityFailures.length} ${parityLabel}`,
+        `${paddingFailureCount} ${paddingLabel}`,
         `outer ring ${decoded.outerDataRing}`
       ].join(" · ");
 
